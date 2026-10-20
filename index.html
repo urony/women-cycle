@@ -1,0 +1,1016 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>המחזור החודשי – סימולציה</title>
+<meta name="description" content="סימולציה אינטראקטיבית של המחזור החודשי: הורמונים, שחלה ורחם, יום אחר יום.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fdf7f4; --card:#ffffff; --ink:#2b2433; --muted:#6a6175; --line:#efe2e0;
+  --fsh:#2f6fdb; --lh:#14996a; --e2:#e0457f; --p4:#ee8a1c;
+  --menses:#f9d3d5; --prolif:#dce8fb; --ovul:#ffe7a3; --luteal:#eadffb;
+  --menses-s:#e9808a; --prolif-s:#7ba6ea; --ovul-s:#f2bb25; --luteal-s:#a98bdc;
+  --accent:#7a5af8; --bubble:#fff2bf; --bubble-edge:#f1d77c;
+  --shadow:0 6px 24px rgba(90,50,80,.08);
+}
+@media (prefers-color-scheme:dark){
+  :root{ --bg:#17131d; --card:#221c2c; --ink:#f4eef9; --muted:#b5aac3; --line:#362d45;
+    --bubble:#4a3f1f; --bubble-edge:#8a7430; --shadow:0 6px 24px rgba(0,0,0,.35);}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Heebo","Rubik","Segoe UI",system-ui,Arial,sans-serif;line-height:1.5}
+.wrap{max-width:1480px;margin:0 auto;padding:0 16px 40px}
+header.top{padding:12px 4px 8px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+header.top h1{margin:0;font-size:clamp(21px,2.6vw,28px);font-weight:800;letter-spacing:-.3px}
+header.top p{margin:0;color:var(--muted);font-size:14.5px}
+
+/* controls + dock (sticky: controls and hormone graph stay visible while organs scroll) */
+.dock{position:sticky;top:0;z-index:30;margin:0 -16px 12px;padding:8px 16px 8px;background:color-mix(in srgb,var(--bg) 93%,transparent);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);box-shadow:0 8px 20px rgba(60,30,60,.10)}
+.controls{padding:0}
+.ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px}
+.btn{font:inherit;font-weight:700;border:2px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:999px;cursor:pointer;transition:transform .08s,box-shadow .2s}
+.btn:hover{box-shadow:var(--shadow)} .btn:active{transform:scale(.97)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;min-width:108px}
+.btn.primary.pulse{animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(122,90,248,.5)}70%{box-shadow:0 0 0 14px rgba(122,90,248,0)}100%{box-shadow:0 0 0 0 rgba(122,90,248,0)}}
+.daybadge{display:flex;align-items:baseline;gap:6px;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:2px 14px}
+.dnum{font-size:28px;font-weight:800;line-height:1.1;min-width:1.4em;text-align:center}
+.dof{font-size:13px;color:var(--muted)}
+.phasechip{font-weight:800;border-radius:999px;padding:6px 14px;font-size:15px;color:#2b2433;transition:background .3s}
+.spacer{flex:1}
+.jumps{display:flex;gap:6px;flex:1 1 0;min-width:120px;overflow-x:auto;scrollbar-width:none}
+.jumps::-webkit-scrollbar{display:none}
+.ctl-row label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:6px}
+select{font:inherit;border:2px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:4px 8px}
+.sliderwrap{direction:ltr;margin-top:4px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:14px;border-radius:999px;margin:6px 0 2px;cursor:pointer;
+  background:linear-gradient(to right,var(--menses-s) 0 17.857%,var(--prolif-s) 17.857% 46.43%,var(--ovul-s) 46.43% 50%,var(--luteal-s) 50% 100%)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:30px;height:30px;border-radius:50%;background:#fff;border:4px solid var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.25)}
+input[type=range]::-moz-range-thumb{width:24px;height:24px;border-radius:50%;background:#fff;border:4px solid var(--accent);box-shadow:0 2px 8px rgba(0,0,0,.25)}
+input[type=range]::-moz-range-track{background:transparent}
+.phasestrip{display:grid;grid-template-columns:5fr 8fr 1fr 14fr;font-size:12.5px;font-weight:700;color:var(--muted);direction:ltr}
+.phasestrip span{direction:rtl;text-align:center;white-space:nowrap;overflow:visible}
+.jump{font:inherit;font-size:13px;font-weight:700;white-space:nowrap;border:2px solid var(--line);background:var(--card);color:var(--ink);padding:3px 11px;border-radius:999px;cursor:pointer}
+.jump:hover{border-color:var(--accent)}
+.jumps .lbl{font-size:13px;color:var(--muted);align-self:center;white-space:nowrap}
+.dock .graphc{margin-top:6px}
+.stage #gSvg{height:190px}
+
+/* grid */
+.grid{display:grid;gap:14px;grid-template-columns:repeat(12,1fr)}
+.card{background:var(--card);border-radius:22px;padding:14px 18px;box-shadow:var(--shadow);border:1px solid var(--line);min-width:0}
+.card h2{margin:0 0 6px;font-size:18px;font-weight:800;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card h2 .sub{font-size:13px;font-weight:500;color:var(--muted)}
+.ovc{grid-column:span 6}
+.utc{grid-column:span 6}
+.axc{grid-column:1/-1}
+.stage{background:linear-gradient(#fffefd,#fff7f4);border:1px solid #f1e4e0;border-radius:16px;overflow:hidden}
+.stage svg{display:block;width:100%;height:auto;direction:rtl}
+.ovc .stage svg,.utc .stage svg{max-height:400px}
+.axc .stage svg{max-height:340px}
+.note{font-size:13px;color:var(--muted);margin:8px 2px 0}
+.headline{display:inline-block;font-size:14px;font-weight:700;background:var(--prolif);color:#2b2433;border-radius:999px;padding:3px 12px;margin:2px 0 8px}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px}
+.tag{font-size:13px;background:#f6eef0;color:#4a3f55;border-radius:10px;padding:3px 10px;font-weight:500}
+.tag b{font-weight:800}
+@media (prefers-color-scheme:dark){.tag{background:#33293f;color:#eadff3}}
+
+/* story */
+.story{display:grid;grid-template-columns:minmax(330px,5fr) 7fr;gap:8px 24px;align-items:start;margin-bottom:12px}
+.story-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.phase-pill{font-size:12.5px;font-weight:800;padding:3px 12px;border-radius:999px;color:#2b2433}
+.story h2{font-size:20px;line-height:1.25;margin:0}
+.ovi{display:flex;gap:10px;align-items:flex-start;margin:4px 0 0}
+.ovi svg{flex:0 0 64px;width:64px;height:64px;filter:drop-shadow(0 3px 6px rgba(120,80,20,.25))}
+.bubble{position:relative;background:var(--bubble);border:2px solid var(--bubble-edge);border-radius:18px;padding:7px 13px;font-size:15px;font-weight:500;flex:1}
+.bubble::before{content:"";position:absolute;inset-inline-start:-11px;top:20px;width:16px;height:16px;background:var(--bubble);
+  border-inline-start:2px solid var(--bubble-edge);border-bottom:2px solid var(--bubble-edge);transform:rotate(45deg)}
+.bubble .who{display:block;font-size:12px;font-weight:800;color:#a07d12;margin-bottom:0}
+@media (prefers-color-scheme:dark){.bubble .who{color:#e6c660}}
+.facts{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.facts li{border-inline-start:5px solid var(--c);padding:3px 11px;background:color-mix(in srgb,var(--c) 7%,transparent);border-radius:6px 12px 12px 6px}
+.facts b{display:block;font-size:13px;color:var(--c);filter:brightness(.82);font-weight:800}
+.facts span{font-size:14.5px;line-height:1.4;display:block}
+.no-ovi .ovi{display:none}
+.toggles{margin-top:6px;font-size:12.5px;color:var(--muted)}
+
+/* chips */
+.chips{display:flex;gap:8px;margin:0 0 6px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{font:inherit;flex:1 1 0;min-width:max-content;display:grid;grid-template-columns:auto 1fr;column-gap:7px;align-items:center;text-align:start;
+  background:var(--card);border:2.5px solid var(--c);color:var(--ink);border-radius:12px;padding:2px 10px;cursor:pointer}
+.chip .ci{grid-row:1 / span 2;width:20px;height:20px}
+.chip .cn{font-weight:800;font-size:15px}
+.chip .cl{font-weight:500;font-size:13px;color:var(--muted);margin-inline-start:6px}
+.chip .src{font-size:11.5px;color:var(--muted);grid-column:2;line-height:1.2}
+.chip .ci{grid-row:1 / span 2}
+.chip[aria-pressed=false]{opacity:.45;border-style:dashed;filter:grayscale(.7)}
+
+svg text{font-family:inherit}
+.legend-s{display:inline-block;width:14px;text-align:center;font-weight:800}
+
+footer{margin-top:22px;font-size:13px;color:var(--muted);line-height:1.6}
+footer details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 14px;margin-top:10px}
+footer summary{cursor:pointer;font-weight:700;color:var(--ink)}
+
+@media (max-width:999px){
+  .grid{grid-template-columns:1fr}
+  .ovc,.utc,.axc{grid-column:1/-1}
+  .story{grid-template-columns:1fr}
+  .facts{grid-template-columns:1fr;gap:7px}
+  .jumps{flex:1 1 100%;order:9}
+  .chip .src{display:none}
+  .ovc .stage svg,.utc .stage svg{max-height:none}
+}
+@media (max-width:640px){
+  .wrap{padding:0 10px 30px}
+  .dock{margin:0 -10px 10px;padding:6px 10px}
+  .stage #gSvg{height:150px}
+  .card{padding:12px 12px;border-radius:18px}
+  .btn{padding:6px 10px;font-size:14px}.btn.primary{min-width:44px;padding-inline:14px}.lbl-m{display:none}
+  .phasechip{padding:3px 9px}
+  .dnum{font-size:22px}.dof{display:none}.spacer{display:none}
+  .daybadge{padding:2px 10px}
+  .phasechip{font-size:13px;padding:4px 10px}
+  .jumps,.ctl-row label,.phasestrip{display:none}
+  .ctl-row{gap:6px}
+  header.top{padding:8px 4px 4px}header.top p{display:none}
+  .ovi svg{flex-basis:52px;width:52px;height:52px}
+  .story h2{font-size:18px}
+  .chip{padding:1px 8px;min-width:max-content}.chip .cn{font-size:13.5px}.chip .cl{font-size:12px}.chip .ci{width:16px;height:16px}
+  input[type=range]{margin:4px 0 0}
+}
+@media (max-height:820px) and (min-width:1000px){
+  .ovc .stage svg,.utc .stage svg{max-height:322px}
+  .ovc .note{display:none}
+  .card{padding-block:10px}
+  .card h2{margin-bottom:2px}
+  .headline{margin-bottom:4px}
+}
+@media (max-height:820px) and (min-width:641px){
+  .stage #gSvg{height:150px}
+  .chip .src,.phasestrip{display:none}
+  .dock{padding-block:6px}
+}
+@media (prefers-reduced-motion:reduce){.btn.primary.pulse{animation:none}}
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+<header class="top">
+  <h1>המחזור החודשי, יום אחרי יום</h1>
+  <p>לחצו ▶ או גררו את הסליידר (או את הגרף) וראו מה קורה בכל יום. לחיצה על שם הורמון מסתירה אותו.</p>
+</header>
+
+<section class="card story" id="storyCard">
+  <div class="story-main">
+    <div class="story-head">
+      <span class="phase-pill" id="stPhase"></span>
+      <h2 id="stTitle" aria-live="polite"></h2>
+    </div>
+    <div class="ovi">
+      <svg id="oviSvg" viewBox="0 0 80 80" aria-hidden="true">
+        <circle cx="40" cy="40" r="37" fill="#ffe3a6" stroke="#f0bf5f" stroke-width="2"/>
+        <g fill="#fff6dc" stroke="#f0bf5f" stroke-width=".8">
+          <circle cx="40" cy="5" r="2.2"/><circle cx="59" cy="10" r="2.2"/><circle cx="72" cy="26" r="2.2"/><circle cx="73" cy="48" r="2.2"/>
+          <circle cx="62" cy="67" r="2.2"/><circle cx="40" cy="75" r="2.2"/><circle cx="18" cy="67" r="2.2"/><circle cx="7" cy="48" r="2.2"/>
+          <circle cx="8" cy="26" r="2.2"/><circle cx="21" cy="10" r="2.2"/>
+        </g>
+        <circle cx="40" cy="40" r="29" fill="#fffaf0" stroke="#f3d38b" stroke-width="1.5"/>
+        <circle cx="25" cy="46" r="5" fill="#ffb5bf" opacity=".7"/><circle cx="55" cy="46" r="5" fill="#ffb5bf" opacity=".7"/>
+        <g id="oviEyes"></g>
+        <path id="oviMouth" d="M32 48 Q40 56 48 48" fill="none" stroke="#7a4a2b" stroke-width="2.4" stroke-linecap="round"/>
+      </svg>
+      <div class="bubble"><span class="who">אובי</span><span id="oviSay"></span></div>
+    </div>
+    <div class="toggles"><label><input type="checkbox" id="tglOvi" checked> להציג את אובי</label></div>
+  </div>
+  <ul class="facts">
+    <li style="--c:#7a5af8"><b>הורמונים</b><span id="fH"></span></li>
+    <li style="--c:#e0457f"><b>שחלה</b><span id="fO"></span></li>
+    <li style="--c:#d9722c"><b>רחם</b><span id="fU"></span></li>
+  </ul>
+</section>
+
+<div class="dock" id="dock">
+<section class="controls" aria-label="בקרת זמן">
+  <div class="ctl-row">
+    <button class="btn primary pulse" id="btnPlay" type="button"><span class="ico">▶</span><span class="lbl-m"> הפעל</span></button>
+    <button class="btn" id="btnPrev" type="button"><span class="lbl-m">יום </span>קודם</button>
+    <button class="btn" id="btnNext" type="button"><span class="lbl-m">יום </span>הבא</button>
+    <div class="daybadge" aria-hidden="true"><span class="dnum" id="dayNum">1</span><span class="dof">מתוך 28</span></div>
+    <div class="phasechip" id="phaseChip">וסת</div>
+    <div class="jumps" id="jumps"><span class="lbl">קפיצה מהירה:</span></div>
+    <label>מהירות
+      <select id="speed"><option value="0.35">איטית</option><option value="0.8" selected>רגילה</option><option value="2">מהירה</option></select>
+    </label>
+  </div>
+  <div class="sliderwrap">
+    <input type="range" id="slider" min="1" max="28.99" step="0.01" value="1.4" aria-label="יום במחזור">
+    <div class="phasestrip"><span>וסת</span><span>שלב השגשוג</span><span>ביוץ</span><span>שלב האגירה</span></div>
+  </div>
+</section>
+<section class="graphc" aria-label="גרף הורמונים">
+  <div class="chips" id="chips"></div>
+  <div class="stage"><svg id="gSvg" viewBox="0 0 900 230" role="img" aria-label="גרף רמות FSH, LH, אסטרוגן ופרוגסטרון לאורך 28 ימי המחזור"></svg></div>
+</section>
+</div>
+
+<main class="grid" id="grid">
+  <section class="card ovc">
+    <h2>השחלה</h2>
+    <div class="headline" id="ovHead"></div>
+    <div class="stage"><svg id="ovSvg" viewBox="0 0 440 446" role="img" aria-label="חתך בשחלה עם הזקיקים והגופיף הצהוב"></svg></div>
+    <p class="note">החלקיקים הם הורמונים. <span style="color:var(--fsh)"><b class="legend-s">◆</b>FSH</span> ו<span style="color:var(--lh)"><b class="legend-s">▲</b>LH</span> מגיעים מההיפופיזה דרך הדם אל השחלה.
+      <span style="color:var(--e2)"><b class="legend-s">●</b>אסטרוגן</span> ו<span style="color:var(--p4)"><b class="legend-s">■</b>פרוגסטרון</span> מופרשים מהשחלה אל הדם.</p>
+  </section>
+
+  <section class="card utc" id="utCard">
+    <h2>הרחם</h2>
+    <div class="headline" id="utHead"></div>
+    <div class="tags" id="utTags"></div>
+    <div class="stage"><svg id="utSvg" viewBox="0 0 700 400" role="img" aria-label="הרחם וחתך מוגדל ברירית הרחם"></svg></div>
+  </section>
+
+  <section class="card axc">
+    <h2>מי שולט במי? ציר הבקרה <span class="sub">היפותלמוס ← היפופיזה ← שחלה, ומשוב חזרה</span></h2>
+    <div class="stage"><svg id="axSvg" viewBox="0 0 900 310" role="img" aria-label="ציר היפותלמוס, היפופיזה ושחלה עם משוב חיובי ושלילי"></svg></div>
+    <p class="note" id="axBanner" style="font-size:15px;color:var(--ink);margin-top:10px"></p>
+    <p class="note"><b>⊖ משוב שלילי</b>: ההורמון מעכב את ההפרשה. <b>⊕ משוב חיובי</b>: ההורמון מעודד אותה. עובי החץ מראה את רמת ההורמון באותו יום.</p>
+  </section>
+</main>
+
+<footer>
+  <details>
+    <summary>על הסימולציה</summary>
+    <p>הסימולציה מציגה מחזור ממוצע של 28 יום, עם ביוץ ביום 14 בערך. במציאות אורך המחזור משתנה בין נשים ואפילו בין מחזורים של אותה אישה (21–35 ימים נחשבים תקינים), ומועד הביוץ משתנה איתו.
+    עובי הרירית מבוסס על החומר הנלמד (כ-0.5 מ״מ אחרי הווסת ועד כ-5 מ״מ בסוף המחזור). הגרפים מראים רמות יחסיות ולא ערכים מעבדתיים. זהו כלי לימוד, ולא כלי רפואי.</p>
+  </details>
+</footer>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = s => document.querySelector(s);
+const NS = 'http://www.w3.org/2000/svg';
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+const lerp = (a,b,u) => a+(b-a)*u;
+const sstep = (a,b,x) => { const u = clamp((x-a)/(b-a),0,1); return u*u*(3-2*u); };
+const ease = u => u<.5 ? 2*u*u : 1-Math.pow(-2*u+2,2)/2;
+const hx = h => h[0]==='r' ? h.match(/\d+/g).map(Number) : [1,3,5].map(i => parseInt(h.slice(i,i+2),16));
+const mix = (a,b,u) => { const A=hx(a),B=hx(b); return 'rgb('+A.map((v,i)=>Math.round(lerp(v,B[i],clamp(u,0,1)))).join(',')+')'; };
+const f1 = v => (+v).toFixed(1);
+const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- smooth monotone interpolation (PCHIP) ---------- */
+function pchip(pts){
+  const n=pts.length, x=pts.map(p=>p[0]), y=pts.map(p=>p[1]), h=[], d=[], m=new Array(n);
+  for(let i=0;i<n-1;i++){ h[i]=x[i+1]-x[i]; d[i]=(y[i+1]-y[i])/h[i]; }
+  m[0]=d[0]; m[n-1]=d[n-2];
+  for(let i=1;i<n-1;i++){
+    if(d[i-1]*d[i]<=0) m[i]=0;
+    else { const w1=2*h[i]+h[i-1], w2=h[i]+2*h[i-1]; m[i]=(w1+w2)/(w1/d[i-1]+w2/d[i]); }
+  }
+  return t => {
+    if(t<=x[0]) return y[0]; if(t>=x[n-1]) return y[n-1];
+    let i=0; while(t>x[i+1]) i++;
+    const s=(t-x[i])/h[i], s2=s*s, s3=s2*s;
+    return (2*s3-3*s2+1)*y[i] + (s3-2*s2+s)*h[i]*m[i] + (-2*s3+3*s2)*y[i+1] + (s3-s2)*h[i]*m[i+1];
+  };
+}
+
+/* ---------- the physiology model (relative levels 0-100, day 1 = t 1..2) ---------- */
+const H = {
+  fsh: pchip([[1,50],[2,55],[4,60],[6,50],[8,37],[10,25],[12,20],[13,27],[13.8,50],[14.4,52],[15.2,30],[16.5,16],[19,10],[23,9],[25.5,10],[26.7,16],[28,36],[29,50]]),
+  lh:  pchip([[1,12],[4,11],[8,10],[10,12],[11.5,16],[12.3,30],[12.9,62],[13.5,100],[14.1,66],[14.7,28],[15.5,14],[17,9],[22,8],[26,8],[28,10],[29,12]]),
+  e2:  pchip([[1,12],[3,12],[5,16],[7,28],[9,46],[11,78],[12.4,100],[13.3,88],[14,58],[14.8,40],[16,46],[18,60],[20.5,66],[22,62],[24,46],[26,24],[27.5,12],[29,12]]),
+  p4:  pchip([[1,4],[13,4],[13.6,6],[14.3,12],[15.3,30],[17,62],[19,88],[21,100],[22.5,92],[24,66],[25.5,34],[26.5,14],[27.5,6],[29,4]])
+};
+const THICK = pchip([[1,4.4],[2,3.3],[3,2.0],[4,1.1],[5,0.6],[6,0.5],[8,0.9],[10,1.6],[12,2.3],[13.9,2.9],[16,3.4],[18,4.0],[20,4.6],[22,5.0],[25.5,5.0],[27,4.8],[28,4.6],[29,4.4]]);
+const BLEED = pchip([[1,.55],[2,1],[3,.8],[4,.45],[5,.15],[5.8,0],[27.9,0],[28.6,.15],[29,.55]]);
+const ISCH  = pchip([[1,1],[3,.8],[5,.1],[6,0],[26,0],[27,.35],[28,.8],[29,1]]);
+const DOMMM = pchip([[1,1.6],[3,3],[5,5],[7,8],[9,11.5],[11,15],[12.5,18.5],[14,21]]);
+
+const HM = {
+  fsh:{name:'FSH', hex:'#2f6fdb', shape:'diamond', full:'הורמון מגרה זקיק'},
+  lh: {name:'LH',  hex:'#14996a', shape:'tri',     full:'הורמון מחלמן'},
+  e2: {name:'אסטרוגן', hex:'#e0457f', shape:'circle', full:'אסטרוגן'},
+  p4: {name:'פרוגסטרון', hex:'#ee8a1c', shape:'square', full:'פרוגסטרון'}
+};
+const KEYS = ['fsh','lh','e2','p4'];
+const show = {fsh:true,lh:true,e2:true,p4:true};
+
+function shapePath(k,x,y,r){
+  switch(k){
+    case 'diamond': return `M${x},${y-r*1.15}L${x+r*1.05},${y}L${x},${y+r*1.15}L${x-r*1.05},${y}Z`;
+    case 'tri': return `M${x},${y-r*1.1}L${x+r*1.05},${y+r*.85}L${x-r*1.05},${y+r*.85}Z`;
+    case 'square': return `M${x-r*.9},${y-r*.9}h${r*1.8}v${r*1.8}h${-r*1.8}Z`;
+    default: return `M${x-r},${y}a${r},${r} 0 1,0 ${2*r},0a${r},${r} 0 1,0 ${-2*r},0Z`;
+  }
+}
+function levelWord(v){ return v<20?'נמוך':v<50?'בינוני':v<80?'גבוה':'שיא'; }
+function trendWord(k,t){ const s=H[k](t+.3)-H[k](t-.3); return s>3?'↑ עולה':s<-3?'↓ יורד':'→ יציב'; }
+
+/* ---------- phases & story ---------- */
+const PH = {
+  menses:{n:'וסת',   bg:'var(--menses)', s:'var(--menses-s)'},
+  prolif:{n:'שלב השגשוג', bg:'var(--prolif)', s:'var(--prolif-s)'},
+  ovul:  {n:'ביוץ',  bg:'var(--ovul)',   s:'var(--ovul-s)'},
+  luteal:{n:'שלב האגירה', bg:'var(--luteal)', s:'var(--luteal-s)'}
+};
+const phaseOf = t => t<6?'menses':t<14?'prolif':t<15?'ovul':'luteal';
+
+const STORY = [
+ {a:1,b:3,ph:'menses',mood:'sleepy',title:'ימים 1 עד 2 · הווסת',
+  joke:'מחזור חדש מתחיל! הרחם עושה סדר בבית, ככה זה אמור להיות. אפשר להכין תה.',
+  h:'האסטרוגן והפרוגסטרון נמוכים מאוד. אין להם כמעט השפעה מעכבת, ולכן FSH מתחיל לעלות.',
+  o:'הגופיף הצהוב מהמחזור הקודם הפך לצלקת לבנה (גופיף לבן). זקיקים קטנים מתחילים להתפתח.',
+  u:'כלי הדם ברירית התכווצו, והשכבה הפונקציונלית נושרת יחד עם כ-30–40 מ״ל דם דרך צוואר הרחם והנרתיק.'},
+ {a:3,b:6,ph:'menses',mood:'happy',title:'ימים 3 עד 5 · סוף הווסת',
+  joke:'הניקיון נגמר. עוד רגע מתחילים לבנות.',
+  h:'FSH גבוה יחסית. האסטרוגן עדיין נמוך, אבל מתחיל לעלות לאט.',
+  o:'FSH מגייס קבוצה של זקיקים להתפתחות. בכל זקיק יש ביצית לא בשלה אחת.',
+  u:'הדימום נחלש. נשארת רק השכבה הבסיסית, דקה מאוד (כ-0.5 מ״מ), ומתוכה תיבנה רירית חדשה.'},
+ {a:6,b:9,ph:'prolif',mood:'happy',title:'ימים 6 עד 8 · שלב השגשוג',
+  joke:'הזקיקים גדלים והאסטרוגן נכנס לעבודה. מתחילים לשגשג!',
+  h:'הזקיקים המתפתחים מפרישים אסטרוגן, ורמתו עולה בהדרגה.',
+  o:'הזקיקים גדלים ומתמלאים בנוזל. בכל אחד מהם ביצית אחת.',
+  u:'האסטרוגן גורם לתאי הרירית להתרבות. הרירית מתעבה, ובלוטות וכלי דם חדשים צומחים בתוכה.'},
+ {a:9,b:12,ph:'prolif',mood:'happy',title:'ימים 9 עד 11 · נשאר זקיק אחד',
+  joke:'שלב הגמר: רק זקיק אחד ממשיך הלאה. השאר מתפנים בכבוד.',
+  h:'האסטרוגן עולה ופועל במשוב שלילי על ההיפופיזה, ולכן FSH יורד.',
+  o:'זקיק אחד, הדומיננטי, ממשיך לגדול. שאר הזקיקים מתנוונים.',
+  u:'הרירית ממשיכה להתעבות (כ-2 מ״מ). ריר צוואר הרחם נעשה דליל יותר.'},
+ {a:12,b:13.4,ph:'prolif',mood:'wow',title:'ימים 12 עד 13 · משוב חיובי',
+  joke:'האסטרוגן מגיע לשיא, ועכשיו קורה משהו מפתיע: הוא הופך מבלם לגז.',
+  h:'רמה גבוהה של אסטרוגן במשך כמה ימים פועלת על ההיפופיזה במשוב חיובי. זה מתחיל את שיא ה-LH.',
+  o:'הזקיק הדומיננטי הגיע לגודל של כ-2 ס״מ ובולט מפני השחלה.',
+  u:'הרירית ממשיכה להתעבות. ריר צוואר הרחם דליל ומקל על מעבר תאי זרע.'},
+ {a:13.4,b:14,ph:'prolif',mood:'wow',title:'סוף יום 13 · שיא LH',
+  joke:'זה הרגע! LH קורא לביצית לצאת.',
+  h:'שיא LH: עלייה חדה ומהירה. גם FSH עולה מעט, והאסטרוגן כבר מתחיל לרדת.',
+  o:'LH גורם לביצית להשלים את המיוזה הראשונה ולזקיק להתחיל להיקרע. הביוץ יתרחש בתוך שעות.',
+  u:'הרחם מחכה. אין שינוי גדול ברגע הזה.'},
+ {a:14,b:15,ph:'ovul',mood:'wow',title:'יום 14 · ביוץ!',
+  joke:'היציאה לאור! הביצית יוצאת לטיול. שימו לב לחצוצרה.',
+  h:'אחרי שיא LH האסטרוגן יורד זמנית, והפרוגסטרון מתחיל לעלות.',
+  o:'הזקיק מתבקע ומשחרר ביצית, והפימבריה של החצוצרה קולטת אותה. הזקיק שנשאר הופך לגופיף צהוב.',
+  u:'הביצית חיה כ-12–24 שעות. אם תופרה, זה יקרה בחצוצרה ולא ברחם.'},
+ {a:15,b:19,ph:'luteal',mood:'happy',title:'ימים 15 עד 18 · שלב האגירה',
+  joke:'עכשיו מפנקים: הרחם מכין מיטה, כרית ושמיכה למקרה שיגיע אורח.',
+  h:'הגופיף הצהוב מפריש בעיקר פרוגסטרון, וגם מעט אסטרוגן. שניהם מעכבים את FSH ו-LH (משוב שלילי).',
+  o:'הגופיף הצהוב גדל ופועל כבלוטה זמנית. לא מתפתחים זקיקים חדשים.',
+  u:'הפרוגסטרון מעבה את הרירית עוד, הבלוטות מפרישות חומרי מזון וזרימת הדם עולה. ריר צוואר הרחם סמיך שוב.'},
+ {a:19,b:24,ph:'luteal',mood:'happy',title:'ימים 19 עד 23 · שיא הפרוגסטרון',
+  joke:'המלון מוכן לקבל אורחים. מצעים נקיים, ארוחת בוקר מוכנה.',
+  h:'הפרוגסטרון בשיא, כשבוע אחרי הביוץ. הטמפרטורה הבסיסית של הגוף גבוהה ב-0.2–0.5 מעלות.',
+  o:'הגופיף הצהוב בגודלו המלא.',
+  u:'הרירית בעוביה המרבי (כ-5 מ״מ), עשירה בבלוטות מפרישות ובכלי דם. אם הייתה הפריה, העובר היה משתרש עכשיו, והרקמה העוברית הייתה מפרישה HCG ששומר על הגופיף הצהוב.'},
+ {a:24,b:26.5,ph:'luteal',mood:'sleepy',title:'ימים 24 עד 26 · אין הפריה',
+  joke:'אף אחד לא הגיע. הגופיף הצהוב מבין את הרמז ומתחיל לארוז.',
+  h:'בלי HCG הגופיף הצהוב מתנוון, והפרשת הפרוגסטרון והאסטרוגן יורדת.',
+  o:'הגופיף הצהוב מצטמק.',
+  u:'הרירית עדיין עבה, אבל התמיכה ההורמונלית נחלשת.'},
+ {a:26.5,b:29,ph:'luteal',mood:'sleepy',title:'ימים 27 עד 28 · ההורמונים צונחים',
+  joke:'סוף העונה. מסיימים ומתחילים סיבוב חדש.',
+  h:'פרוגסטרון ואסטרוגן צונחים. ההיפותלמוס וההיפופיזה משתחררים מהעיכוב, ו-FSH מתחיל לעלות.',
+  o:'הגופיף הצהוב הופך לגופיף לבן, רקמת צלקת.',
+  u:'כלי הדם ברירית מתכווצים והרקמה לא מקבלת חמצן. הרירית מתחילה להתנתק, והווסת הבאה בדרך.'}
+];
+const INTRO = 'היי, אני אובי, הביצית שמלווה אתכם במסע. לחצו ▶ ובואו נראה איך נראה חודש אחד בחיים של שחלה.';
+
+/* ---------- feedback state ---------- */
+function fbState(t){
+  if(t<6 || t>=26.3) return 'release';
+  if(t<11.8) return 'negE';
+  if(t<14) return 'posE';
+  return 'negP';
+}
+const FB_TEXT = {
+  release:{h:'אין עיכוב',     b:'הורמוני השחלה נמוכים, ולכן ההיפותלמוס וההיפופיזה כמעט לא מעוכבים. FSH עולה ומגייס זקיקים חדשים.'},
+  negE:   {h:'משוב שלילי של אסטרוגן', b:'האסטרוגן עולה ומעכב את הפרשת FSH, ולכן FSH יורד. נשאר זקיק דומיננטי אחד.'},
+  posE:   {h:'משוב חיובי של אסטרוגן', b:'רמה גבוהה של אסטרוגן במשך כמה ימים מעודדת את ההיפופיזה, במקום לעכב אותה. התוצאה היא שיא LH, ואחריו ביוץ.'},
+  negP:   {h:'משוב שלילי של פרוגסטרון', b:'הפרוגסטרון (ומעט אסטרוגן) מהגופיף הצהוב מעכבים את ההיפותלמוס וההיפופיזה. FSH ו-LH נמוכים, ולכן לא מתפתחים זקיקים חדשים.'}
+};
+
+/* ---------- time state ---------- */
+let t = 1.4, playing = false, speedDay = 0.8, cycle = 0, touched = false, lastT = -1, lastStory = -1;
+const slider = $('#slider');
+
+/* ---------- svg text helper ---------- */
+function T(x,y,str,o={}){
+  const size=o.size||12, fill=o.fill||'#5b5066', w=o.weight||500, dir=o.dir||'rtl', al=o.align||'middle';
+  let anchor='middle'; if(al==='left') anchor = dir==='rtl'?'end':'start'; if(al==='right') anchor = dir==='rtl'?'start':'end';
+  const halo = o.halo ? ' stroke="#fff" stroke-width="4" paint-order="stroke" stroke-linejoin="round"' : '';
+  return `<text x="${x}" y="${y}" font-size="${size}" fill="${fill}" font-weight="${w}" text-anchor="${anchor}" direction="${dir}"${halo}${o.extra||''}>${str}</text>`;
+}
+function pill(x,y,str,fill,txt){
+  const w = str.length*6.7+18;
+  return `<g><rect x="${x-w/2}" y="${y-12}" width="${w}" height="21" rx="10.5" fill="${fill}" opacity=".95"/>${T(x,y+3,str,{size:12,fill:txt||'#3a2f44',weight:700})}</g>`;
+}
+
+/* =================================================================== */
+/*                           GRAPH                                      */
+/* =================================================================== */
+const G = {x0:46,x1:886,W:900,H:230,bt:24,yb:204,ytop:50};
+const gx = tt => G.x0 + (tt-1)/28*(G.x1-G.x0);
+const gy = v => G.yb - v/100*(G.yb-G.ytop);
+const gSvg = $('#gSvg');
+function gSetup(){
+  const mob = window.matchMedia('(max-width:999px)').matches;
+  const cw = gSvg.clientWidth || 900, ch = gSvg.clientHeight || (mob?150:190);
+  G.H = Math.max(150, Math.round(ch/(mob?.75:.86)));
+  G.W = Math.max(420, Math.round(G.H*cw/ch));
+  G.x0 = 46; G.x1 = G.W-14; G.bt = 24; G.yb = G.H-26; G.ytop = 50;
+  gSvg.setAttribute('viewBox','0 0 '+G.W+' '+G.H);
+}
+function buildGraph(){
+  gSetup();
+  let s = '<defs><clipPath id="clipPast"><rect id="pastRect" x="0" y="0" width="'+G.x0+'" height="'+G.H+'"/></clipPath></defs>';
+  const bands = [[1,6,'menses','וסת'],[6,14,'prolif','שלב השגשוג (זקיקי)'],[14,15,'ovul','ביוץ'],[15,29,'luteal','שלב האגירה (לוטאלי)']];
+  const bandFill = {menses:'#fbdde0',prolif:'#e3ecfb',ovul:'#ffeeb8',luteal:'#efe6fb'};
+  const bandTxt = {menses:'#9b3a45',prolif:'#35599a',ovul:'#8a6500',luteal:'#5d3f98'};
+  const narrow = (G.x1-G.x0)/28 < 18;
+  for(const [a,b,k,n] of bands){
+    s += '<rect x="'+gx(a)+'" y="'+G.bt+'" width="'+(gx(b)-gx(a))+'" height="'+(G.yb-G.bt)+'" fill="'+bandFill[k]+'"/>';
+    s += T((gx(a)+gx(b))/2, G.bt-7, (narrow&&k==='prolif')?'שלב השגשוג':(narrow&&k==='luteal')?'שלב האגירה':n, {size: k==='ovul'?10.5:12.5, fill:bandTxt[k], weight:800});
+  }
+  for(const v of [0,25,50,75,100]) s += '<line x1="'+G.x0+'" x2="'+G.x1+'" y1="'+gy(v)+'" y2="'+gy(v)+'" stroke="#fff" stroke-width="'+(v===0?2.5:1.5)+'" opacity=".9"/>';
+  s += '<line x1="'+G.x0+'" x2="'+G.x1+'" y1="'+G.yb+'" y2="'+G.yb+'" stroke="#b8aabd" stroke-width="2"/>';
+  s += T(G.x0-6, gy(100)+4, 'גבוה', {size:11, fill:'#7d7288', align:'right'});
+  s += T(G.x0-6, gy(0)-2, 'נמוך', {size:11, fill:'#7d7288', align:'right'});
+  for(let d=1; d<=28; d++){
+    if(narrow && d%2===0) continue;
+    s += T(gx(d+0.5), G.yb+16, d, {size:11, fill:'#7d7288', weight:500, extra:' id="tick'+d+'"'});
+  }
+  let curves = '';
+  for(const k of KEYS){
+    let d=''; for(let tt=1; tt<=29.001; tt+=0.1) d += (d?'L':'M')+gx(tt).toFixed(1)+','+gy(H[k](tt)).toFixed(1);
+    curves += '<path id="c_'+k+'" d="'+d+'" fill="none" stroke="'+HM[k].hex+'" stroke-width="3.8" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
+  s += '<defs><g id="curves">'+curves+'</g></defs>';
+  s += '<use href="#curves" opacity=".38" stroke-dasharray="0.1 8"/>';
+  s += '<use href="#curves" clip-path="url(#clipPast)"/>';
+  s += T(gx(3.7), gy(60)-8, 'FSH', {size:12.5, fill:HM.fsh.hex, weight:800, dir:'ltr', halo:true});
+  s += T(gx(13.5)+9, gy(100)+5, 'LH', {size:12.5, fill:HM.lh.hex, weight:800, dir:'ltr', halo:true, align:'left'});
+  s += T(gx(12.4)-8, gy(100)+5, 'אסטרוגן', {size:12.5, fill:HM.e2.hex, weight:800, halo:true, align:'right'});
+  s += T(gx(21), gy(100)-7, 'פרוגסטרון', {size:12.5, fill:HM.p4.hex, weight:800, halo:true});
+  s += T(gx(20.5), gy(66)+17, 'אסטרוגן (מהגופיף הצהוב)', {size:10.5, fill:HM.e2.hex, weight:700, halo:true});
+  // positive-feedback marker: estrogen peak -> LH surge
+  const ax=gx(12.4), bx=gx(13.35), ay=gy(100)-12;
+  s += '<path d="M'+ax+','+ay+' Q'+((ax+bx)/2)+','+(ay-22)+' '+(bx-2)+','+(ay-3)+'" fill="none" stroke="#8a6500" stroke-width="2" stroke-dasharray="4 3"/>';
+  s += '<circle cx="'+((ax+bx)/2)+'" cy="'+(ay-26)+'" r="8" fill="#f7c62e" stroke="#fff" stroke-width="1.5"/>'+T((ax+bx)/2, ay-21.5, '+', {size:13, fill:'#4d3800', weight:800});
+  s += '<g id="cursor"><line id="curLine" x1="0" x2="0" y1="'+G.bt+'" y2="'+G.yb+'" stroke="#2b2433" stroke-width="2" stroke-dasharray="5 4" opacity=".75"/>';
+  for(const k of KEYS) s += '<path id="dot_'+k+'" d="" fill="'+HM[k].hex+'" stroke="#fff" stroke-width="2.5"/>';
+  s += '</g><rect id="gHit" x="0" y="0" width="'+G.W+'" height="'+G.H+'" fill="transparent" style="cursor:ew-resize;touch-action:pan-y"/>';
+  gSvg.innerHTML = s;
+  const hit = $('#gHit');
+  let dragging=false;
+  const setFromX = ev => {
+    const r = gSvg.getBoundingClientRect(); const xv = (ev.clientX-r.left)/r.width*G.W;
+    userSet(clamp(1+(xv-G.x0)/(G.x1-G.x0)*28, 1, 28.99));
+  };
+  hit.addEventListener('pointerdown', ev => { dragging=true; hit.setPointerCapture(ev.pointerId); setFromX(ev); });
+  hit.addEventListener('pointermove', ev => { if(dragging) setFromX(ev); });
+  hit.addEventListener('pointerup', () => dragging=false);
+  hit.addEventListener('pointercancel', () => dragging=false);
+}
+function renderGraph(){
+  const x = gx(t);
+  $('#pastRect').setAttribute('width', Math.max(0,x));
+  $('#curLine').setAttribute('x1',x); $('#curLine').setAttribute('x2',x);
+  for(const k of KEYS){
+    const v=H[k](t), el=$('#dot_'+k);
+    el.setAttribute('d', shapePath(HM[k].shape, x, gy(v), 8));
+    el.style.display = show[k]?'':'none';
+    $('#c_'+k).style.display = show[k]?'':'none';
+  }
+  const day=Math.floor(t);
+  for(let d=1; d<=28; d++){ const e=$('#tick'+d); if(!e) continue; const on=d===day; e.setAttribute('font-weight', on?'800':'500'); e.setAttribute('fill', on?'#2b2433':'#7d7288'); e.setAttribute('font-size', on?'13':'11'); }
+}
+
+/* chips */
+function buildChips(){
+  const box=$('#chips');
+  box.innerHTML = KEYS.map(k => {
+    const m=HM[k];
+    return `<button type="button" class="chip" data-k="${k}" aria-pressed="true" style="--c:${m.hex}" title="${m.full}">
+      <svg class="ci" viewBox="-10 -10 20 20" aria-hidden="true"><path d="${shapePath(m.shape,0,0,7)}" fill="${m.hex}"/></svg>
+      <span><span class="cn">${m.name}</span><span class="cl" id="lv_${k}"></span></span>
+      <span class="src" id="src_${k}"></span></button>`;
+  }).join('');
+  box.addEventListener('click', ev => {
+    const b=ev.target.closest('.chip'); if(!b) return;
+    const k=b.dataset.k; show[k]=!show[k]; b.setAttribute('aria-pressed', show[k]); lastT=-1;
+  });
+}
+function renderChips(){
+  for(const k of KEYS){
+    $('#lv_'+k).textContent = '· '+levelWord(H[k](t))+' '+trendWord(k,t);
+  }
+  $('#src_fsh').textContent='מופרש מההיפופיזה';
+  $('#src_lh').textContent='מופרש מההיפופיזה';
+  $('#src_e2').textContent = (t<14.4)?'מופרש מהזקיקים בשחלה':'מופרש מהגופיף הצהוב';
+  $('#src_p4').textContent = (t<14.4)?'עדיין כמעט לא מופרש':'מופרש מהגופיף הצהוב';
+}
+
+/* =================================================================== */
+/*                           OVARY                                      */
+/* =================================================================== */
+const OV = {cx:220, cy:232, rx:160, ry:122};
+const POS = {A:{x:300,y:160}, B:{x:140,y:160}};
+const COH = [{x:215,y:205,f:.95},{x:170,y:252,f:.8},{x:268,y:250,f:.7},{x:222,y:297,f:.85},{x:332,y:232,f:.6}];
+const FIMB = {x:220,y:66};
+const ovSvg = $('#ovSvg');
+let primordial = '';
+
+function buildOvaryStatic(){
+  let dots='';
+  for(let k=0;k<22;k++){
+    const a=k*2.399+0.6, rf=.80+((k*37)%17)/100;
+    const x=OV.cx+OV.rx*rf*Math.cos(a), y=OV.cy+OV.ry*rf*Math.sin(a);
+    if(y<150 && (Math.abs(x-300)<62 || Math.abs(x-140)<62)) continue;
+    const r=1.8+((k*13)%10)/10*1.2;
+    dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="#fff4e6" stroke="#e5ae98" stroke-width=".8"/>`;
+  }
+  let fingers='';
+  for(const x of [118,146,174,202,230,258,286,314]){
+    const x2 = x+(x-220)*0.09;
+    fingers += `<path d="M${x},60 L${x2.toFixed(1)},98" stroke="#d98098" stroke-width="12" stroke-linecap="round"/>`;
+  }
+  for(const x of [118,146,174,202,230,258,286,314]){
+    const x2 = x+(x-220)*0.09;
+    fingers += `<path d="M${x},60 L${x2.toFixed(1)},98" stroke="#f4b0be" stroke-width="8" stroke-linecap="round"/>`;
+  }
+  ovSvg.innerHTML = `
+  <defs>
+    <radialGradient id="gStroma" cx="50%" cy="42%" r="70%"><stop offset="0" stop-color="#fde8da"/><stop offset="1" stop-color="#f3c3ab"/></radialGradient>
+    <radialGradient id="gE2" ><stop offset="0" stop-color="#e0457f" stop-opacity=".5"/><stop offset="1" stop-color="#e0457f" stop-opacity="0"/></radialGradient>
+    <radialGradient id="gP4" ><stop offset="0" stop-color="#ee8a1c" stop-opacity=".55"/><stop offset="1" stop-color="#ee8a1c" stop-opacity="0"/></radialGradient>
+  </defs>
+  <!-- tube + fimbria -->
+  <path d="M120,48 C80,40 40,34 -10,26" stroke="#d98098" stroke-width="30" fill="none"/>
+  <path d="M120,48 C80,40 40,34 -10,26" stroke="#f4b0be" stroke-width="24" fill="none"/>
+  <path d="M104,64 C104,14 336,14 336,64 Z" fill="#f4b0be" stroke="#d98098" stroke-width="3"/>
+  ${fingers}
+  ${T(220,40,'פימבריה של החצוצרה',{size:12.5,fill:'#8a3a52',weight:700})}
+  ${T(36,68,'חצוצרה',{size:11.5,fill:'#8a3a52',weight:700})}
+  <!-- vessels -->
+  <path d="M190,446 C190,410 206,380 210,350" stroke="#c85555" stroke-width="14" fill="none"/>
+  <path d="M190,446 C190,410 206,380 210,350" stroke="#f2a0a0" stroke-width="7" fill="none"/>
+  <path d="M262,350 C262,380 278,410 278,446" stroke="#4f7ed4" stroke-width="14" fill="none"/>
+  <path d="M262,350 C262,380 278,410 278,446" stroke="#a8c1f1" stroke-width="7" fill="none"/>
+  <!-- ovary -->
+  <ellipse cx="${OV.cx}" cy="${OV.cy}" rx="${OV.rx}" ry="${OV.ry}" fill="url(#gStroma)" stroke="#e2a68d" stroke-width="4"/>
+  <ellipse cx="${OV.cx}" cy="${OV.cy}" rx="${OV.rx-10}" ry="${OV.ry-10}" fill="none" stroke="#f7d4c2" stroke-width="1.5" stroke-dasharray="3 5"/>
+  ${dots}
+  ${T(112,330,'ביציות במנוחה',{size:10.5,fill:'#a56a57',weight:500})}
+  <g id="ovDyn"></g>
+  <g id="ovParts"></g>
+  ${T(92,430,'▲ FSH ו-LH מהדם',{size:12,fill:'#9b4b4b',weight:700})}
+  ${T(352,430,'▼ אסטרוגן ופרוגסטרון לדם',{size:12,fill:'#3f66b3',weight:700})}
+  `;
+}
+
+function follicle(x,y,r,o={}){
+  if(r<1.3) return '';
+  const al = o.alpha==null?1:o.alpha, tint=o.tint||0;
+  const wall=mix('#f2a2b6','#eaa63a',tint), edge=mix('#d4708c','#c98a22',tint), fluid=mix('#fdf1d6','#f7cf72',tint);
+  let s=`<g opacity="${al.toFixed(2)}">`;
+  if(o.glow>0.02) s+=`<circle cx="${x}" cy="${y}" r="${(r*1.9+14).toFixed(1)}" fill="url(#gE2)" opacity="${clamp(o.glow,0,1).toFixed(2)}"/>`;
+  if(o.stretch>0) s+=`<circle cx="${x}" cy="${(y-r*.96).toFixed(1)}" r="${(r*.2*o.stretch+1).toFixed(1)}" fill="${fluid}" stroke="${edge}" stroke-width="2"/>`;
+  if(r<8){
+    s+=`<circle cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="${wall}" stroke="${edge}" stroke-width="1.5"/>`;
+    if(o.oocyte!==false) s+=`<circle cx="${x}" cy="${y}" r="${(r*.5).toFixed(1)}" fill="#ffe9c7" stroke="#e3a45d" stroke-width="1"/>`;
+  } else {
+    const w=Math.max(3,r*.13);
+    s+=`<circle cx="${x}" cy="${y}" r="${r.toFixed(1)}" fill="${wall}" stroke="${edge}" stroke-width="1.8"/>`;
+    s+=`<circle cx="${x}" cy="${y}" r="${(r-w).toFixed(1)}" fill="${fluid}"/>`;
+    s+=`<path d="M${(x-r*.58).toFixed(1)},${(y-r*.2).toFixed(1)} A${(r*.62).toFixed(1)},${(r*.62).toFixed(1)} 0 0 1 ${(x-r*.2).toFixed(1)},${(y-r*.6).toFixed(1)}" stroke="#fff" stroke-width="${Math.max(1.6,r*.07).toFixed(1)}" fill="none" stroke-linecap="round" opacity=".85"/>`;
+    if(o.oocyte!==false){
+      const or=clamp(r*.13,2.8,7), off=(r-w-or-1)*.68, ox=x-off, oy=y+off;
+      if(r>=14){ for(let k=0;k<9;k++){ const a=k/9*Math.PI*2; s+=`<circle cx="${(ox+Math.cos(a)*(or+3.2)).toFixed(1)}" cy="${(oy+Math.sin(a)*(or+3.2)).toFixed(1)}" r="1.5" fill="#fff6e0" stroke="#e3a45d" stroke-width=".6"/>`; } }
+      s+=`<circle cx="${ox.toFixed(1)}" cy="${oy.toFixed(1)}" r="${or.toFixed(1)}" fill="#ffe3b8" stroke="#d9943f" stroke-width="1.3"/><circle cx="${ox.toFixed(1)}" cy="${oy.toFixed(1)}" r="${(or*.36).toFixed(1)}" fill="#d9943f"/>`;
+    }
+  }
+  if(o.burst>0.02){
+    const bx=x, by=y-r, b=o.burst;
+    s+=`<ellipse cx="${bx}" cy="${(by-3).toFixed(1)}" rx="${(r*.4*b+4).toFixed(1)}" ry="${(r*.22*b+3).toFixed(1)}" fill="#fffdf6" stroke="${edge}" stroke-width="1.5"/>`;
+    for(let k=0;k<9;k++){ const a=-Math.PI+k/8*Math.PI, r1=r*.38+6, r2=r1+10*b+3;
+      s+=`<line x1="${(bx+Math.cos(a)*r1).toFixed(1)}" y1="${(by+Math.sin(a)*r1*.8).toFixed(1)}" x2="${(bx+Math.cos(a)*r2).toFixed(1)}" y2="${(by+Math.sin(a)*r2*.8).toFixed(1)}" stroke="#f2bb25" stroke-width="2.4" stroke-linecap="round" opacity="${b.toFixed(2)}"/>`; }
+  }
+  return s+'</g>';
+}
+function corpus(x,y,r,lut,al,halo){
+  let pts='';
+  for(let k=0;k<20;k++){ const a=k/20*Math.PI*2, rr=r*(1+.09*Math.sin(a*3+1)+.05*Math.sin(a*5)); pts+=(x+rr*Math.cos(a)).toFixed(1)+','+(y+rr*Math.sin(a)).toFixed(1)+' '; }
+  return `<g opacity="${al.toFixed(2)}">${halo>0.02?`<circle cx="${x}" cy="${y}" r="${(r*1.9+12).toFixed(1)}" fill="url(#gP4)" opacity="${clamp(halo,0,1).toFixed(2)}"/>`:''}
+  <polygon points="${pts}" fill="${mix('#efe6dc','#f7bb2c',lut)}" stroke="${mix('#cdbfb0','#d58d16',lut)}" stroke-width="2.4" stroke-linejoin="round"/>
+  <circle cx="${x}" cy="${y}" r="${(r*.3).toFixed(1)}" fill="${mix('#e3d8cb','#ea8c1a',lut)}" opacity=".75"/></g>`;
+}
+
+let ST = null; // current ovary state (also used by particles)
+function ovaryState(){
+  const D = (cycle%2===0)?POS.A:POS.B, O = (cycle%2===0)?POS.B:POS.A;
+  const S = {D,O,fol:[],dom:null,cl:null,alb:null,egg:null};
+  // growing cohort
+  COH.forEach((c,i) => {
+    let m;
+    if(t<=7) m = 1.5 + (8*c.f-1.5)*clamp((t-1)/6,0,1);
+    else m = 8*c.f*(1-sstep(7.4,10.2+i*.25,t));
+    const al = 1-sstep(9.2,10.9+i*.2,t);
+    const r=m*2.6;
+    if(r>1.3 && al>0.03) S.fol.push({x:c.x,y:c.y,r,al,cohort:true});
+  });
+  // dominant follicle
+  if(t<14.4){
+    let r=DOMMM(t)*2.6, tint=0, burst=0;
+    if(t>=14){ const u=sstep(14,14.4,t); r=lerp(DOMMM(14)*2.6,22,u); tint=u; burst=clamp(1-(t-14)/0.5,0,1); }
+    S.dom={x:D.x,y:D.y,r,tint,burst,stretch:t>=13.6&&t<14?sstep(13.6,14,t):0,oocyte:t<14.05,glow:H.e2(t)/100*.9};
+  }
+  // corpus luteum
+  if(t>=14.4 && t<29){
+    let r,lut;
+    if(t<24){ r=22+14*clamp((t-14.4)/6,0,1); lut=1; }
+    else { const p=(t-24)/5; r=36-23*p; lut=1-p; }
+    S.cl={x:D.x,y:D.y,r,lut,al:1,halo:H.p4(t)/100};
+  }
+  // albicans of previous cycle
+  if(t<8){ const p=(t-1)/7; S.alb={x:O.x,y:O.y,r:13*(1-p)+3,al:1-p*.85,lut:0}; }
+  // egg
+  if(t>=14.05 && t<15.6){
+    const u=ease(clamp((t-14.05)/0.8,0,1));
+    const c={x:(D.x+FIMB.x)/2, y:D.y-120};
+    const px=(1-u)*(1-u)*D.x+2*(1-u)*u*c.x+u*u*FIMB.x;
+    const py=(1-u)*(1-u)*D.y+2*(1-u)*u*c.y+u*u*FIMB.y;
+    S.egg={x:px,y:py,al:t<14.95?1:1-sstep(14.95,15.5,t),u};
+  }
+  return S;
+}
+function oocyteDraw(x,y,al){
+  let s=`<g opacity="${al.toFixed(2)}" transform="translate(${x} ${y}) scale(1.45) translate(${-x} ${-y})"><circle cx="${x}" cy="${y}" r="17" fill="#ffe27a" opacity=".35"/>`;
+  for(let k=0;k<10;k++){ const a=k/10*Math.PI*2; s+=`<circle cx="${(x+Math.cos(a)*11).toFixed(1)}" cy="${(y+Math.sin(a)*11).toFixed(1)}" r="2.2" fill="#fff6e0" stroke="#e3a45d" stroke-width=".8"/>`; }
+  return s+`<circle cx="${x}" cy="${y}" r="8" fill="#ffe3b8" stroke="#d9943f" stroke-width="1.6"/><circle cx="${x}" cy="${y}" r="3" fill="#d9943f"/></g>`;
+}
+function renderOvary(){
+  ST = ovaryState();
+  let s='';
+  const S=ST;
+  if(S.alb) s+=corpus(S.alb.x,S.alb.y,S.alb.r,0,S.alb.al,0);
+  for(const f of S.fol) s+=follicle(f.x,f.y,f.r,{alpha:f.al,glow:(H.e2(t)/100)*.35*(f.r/20)});
+  if(S.dom) s+=follicle(S.dom.x,S.dom.y,S.dom.r,{tint:S.dom.tint,burst:S.dom.burst,stretch:S.dom.stretch,oocyte:S.dom.oocyte,glow:S.dom.glow});
+  if(S.cl) s+=corpus(S.cl.x,S.cl.y,S.cl.r,S.cl.lut,S.cl.al,S.cl.halo);
+  if(S.egg) s+=oocyteDraw(S.egg.x,S.egg.y,S.egg.al);
+  // labels
+  const lab = (x,y,str,fill,txt)=>pill(clamp(x,64,376),y,str,fill,txt);
+  if(S.dom && t>=7 && t<14){
+    const mm=DOMMM(t);
+    s+=lab(S.dom.x, S.dom.y+S.dom.r+17, t<9?'זקיק מוביל':(t<12?'זקיק דומיננטי':'זקיק בוגר (גראף)')+' · '+Math.round(mm)+' מ״מ','#ffd9e4','#7a2147');
+  }
+  if(S.dom && t>=14 && t<14.4) s+=lab(S.dom.x,S.dom.y+S.dom.r+17,'ביוץ!','#ffe7a3','#7a5600');
+  if(S.cl && S.cl.lut>.55) s+=lab(S.cl.x,S.cl.y+S.cl.r+17,'גופיף צהוב · מפריש פרוגסטרון','#ffe3b0','#7a4300');
+  else if(S.cl) s+=lab(S.cl.x,S.cl.y+S.cl.r+17, t>=27.2?'גופיף לבן (צלקת)':'גופיף צהוב מתנוון','#efe6dc','#5b4b3c');
+  if(S.alb && S.alb.al>.35) s+=lab(S.alb.x,S.alb.y+S.alb.r+17,'גופיף לבן (צלקת)','#efe6dc','#5b4b3c');
+  if(t<7.2) s+=T(244,328,'קבוצת זקיקים מתפתחת',{size:12,fill:'#a0405f',weight:700});
+  if(t>=8 && t<11) s+=T(244,328,'שאר הזקיקים מתנוונים',{size:12,fill:'#8a7a70',weight:700});
+  if(S.egg && S.egg.u>.35 && S.egg.al>.3) s+=pill(clamp(S.egg.x+95,80,360),Math.max(S.egg.y+10,100)+14,'הביצית נקלטת בחצוצרה','#fff0b5','#6f5200');
+  $('#ovDyn').innerHTML = s;
+  // headline
+  let h;
+  if(t<7) h='קבוצת זקיקים מתפתחת';
+  else if(t<9) h='זקיקים גדלים';
+  else if(t<12) h='זקיק דומיננטי · '+Math.round(DOMMM(t))+' מ״מ, האחרים מתנוונים';
+  else if(t<14) h='זקיק בוגר (גראף) · '+Math.round(DOMMM(t))+' מ״מ';
+  else if(t<14.6) h='ביוץ!';
+  else if(t<24) h='גופיף צהוב · מפריש פרוגסטרון';
+  else if(t<27.2) h='הגופיף הצהוב מתנוון';
+  else h='הגופיף הצהוב הופך לגופיף לבן';
+  $('#ovHead').textContent = h;
+}
+
+/* particles */
+const partG = () => $('#ovParts');
+const parts = []; const acc = {fsh:0,lh:0,e2:0,p4:0};
+const COLP = {fsh:HM.fsh.hex,lh:HM.lh.hex,e2:HM.e2.hex,p4:HM.p4.hex};
+const IN = {x:190,y:442}, OUT = {x:278,y:442};
+function pickWeighted(list){ let tot=0; for(const f of list) tot+=f.r*f.r; let u=Math.random()*tot; for(const f of list){ u-=f.r*f.r; if(u<=0) return f; } return list[list.length-1]; }
+function spawn(k){
+  if(!ST || parts.length>110) return;
+  const g=partG(); if(!g) return;
+  let x0,y0,x1,y1,life;
+  const folList = [...ST.fol.filter(f=>f.al>.3), ...(ST.dom?[ST.dom]:[])];
+  if(k==='fsh'){
+    x0=IN.x+ (Math.random()*10-5); y0=IN.y;
+    if(folList.length){ const f=pickWeighted(folList); const a=Math.random()*6.28; x1=f.x+Math.cos(a)*f.r*.5; y1=f.y+Math.sin(a)*f.r*.5; }
+    else { x1=OV.cx+Math.random()*80-40; y1=OV.cy+Math.random()*60; }
+    life=2.4;
+  } else if(k==='lh'){
+    x0=IN.x+(Math.random()*10-5); y0=IN.y;
+    const tgt = ST.cl || ST.dom || (folList[0]);
+    if(tgt){ const a=Math.random()*6.28; x1=tgt.x+Math.cos(a)*tgt.r*.4; y1=tgt.y+Math.sin(a)*tgt.r*.4; } else { x1=OV.cx; y1=OV.cy; }
+    life=2.6;
+  } else {
+    const src = (k==='e2') ? (ST.cl && t>=14.5 ? ST.cl : (folList.length? pickWeighted(folList):null)) : ST.cl;
+    if(!src) return;
+    const a=Math.random()*6.28, rr=Math.random()*src.r*.6; x0=src.x+Math.cos(a)*rr; y0=src.y+Math.sin(a)*rr;
+    x1=OUT.x+(Math.random()*10-5); y1=OUT.y; life=3.0;
+  }
+  const el=document.createElementNS(NS,'path');
+  el.setAttribute('d',shapePath(HM[k].shape,0,0,4.6)); el.setAttribute('fill',COLP[k]); el.setAttribute('stroke','#fff'); el.setAttribute('stroke-width','1.2');
+  g.appendChild(el);
+  parts.push({el,k,x0,y0,x1,y1,age:0,life,ph:Math.random()*6.28});
+}
+function stepParticles(dt){
+  const rateK = reduceMotion?.3:1;
+  const rates = {fsh:H.fsh(t)*.09, lh:H.lh(t)*.11, e2:H.e2(t)*.075, p4:H.p4(t)*.075};
+  if(t>14.0 && t<14.4) rates.e2 *= .3;
+  for(const k of KEYS){
+    if(!show[k]){ continue; }
+    acc[k]+=rates[k]*rateK*dt;
+    let n=0; while(acc[k]>=1 && n<4){ acc[k]-=1; spawn(k); n++; }
+    if(acc[k]>3) acc[k]=0;
+  }
+  for(let i=parts.length-1;i>=0;i--){
+    const p=parts[i]; p.age+=dt; const u=p.age/p.life;
+    if(u>=1 || !show[p.k]){ p.el.remove(); parts.splice(i,1); continue; }
+    const e=u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2, w=Math.sin(p.ph+p.age*4)*3*Math.sin(u*Math.PI);
+    const x=lerp(p.x0,p.x1,e)+w, y=lerp(p.y0,p.y1,e)+w*.6;
+    const a = u<.12?u/.12 : u>.82?(1-u)/.18 : 1;
+    p.el.setAttribute('transform',`translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(p.age*60+p.ph*20).toFixed(0)})`);
+    p.el.setAttribute('opacity',a.toFixed(2));
+  }
+}
+
+/* =================================================================== */
+/*                           UTERUS                                     */
+/* =================================================================== */
+const utSvg = $('#utSvg');
+const MYO = 'M210,48 C272,48 302,72 294,112 C288,152 252,190 232,222 L188,222 C168,190 132,152 126,112 C118,72 148,48 210,48 Z';
+const ENDO = 'M148,84 Q210,64 272,84 L222,212 L198,212 Z';
+let ZX=285, ZY=20, narrowU=false;
+const Z = {x0:50,x1:390,base:250,lumenTop:34,scale:32};
+const SEED = []; (function(){ let s=7; const r=()=>{ s=(s*16807)%2147483647; return s/2147483647; }; for(let i=0;i<70;i++) SEED.push([r(),r(),r()]); })();
+
+function buildUterusStatic(){
+  narrowU = ($('#utCard').clientWidth || window.innerWidth) < 560;
+  ZX = narrowU ? 0 : 285; ZY = narrowU ? 232 : 20;
+  utSvg.setAttribute("viewBox", narrowU ? "0 0 410 596" : "0 0 700 400");
+  const ovT = narrowU ? "translate(78,6) scale(.62)" : "translate(6,34) scale(.78)";
+  const lens = narrowU ? [78+143*.62, 6+122*.62] : [143*.78+6, 122*.78+34];
+  let s=`<defs><pattern id="cellDots" width="9" height="9" patternUnits="userSpaceOnUse"><circle cx="2.5" cy="2.5" r="1.3" fill="#c25a7c" opacity=".28"/><circle cx="7" cy="6.5" r="1" fill="#c25a7c" opacity=".2"/></pattern>
+  <pattern id="fibers" width="14" height="10" patternUnits="userSpaceOnUse"><path d="M0,5 Q3.5,1 7,5 T14,5" stroke="#b9606f" stroke-width="1.2" fill="none" opacity=".55"/></pattern></defs>`;
+  // overview group
+  s+=`<g transform="${ovT}">
+    <path d="M150,80 C112,70 82,82 54,100" stroke="#e79bad" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <path d="M270,80 C308,70 338,82 366,100" stroke="#e79bad" stroke-width="11" fill="none" stroke-linecap="round"/>
+    <ellipse cx="42" cy="126" rx="26" ry="18" fill="url(#gStroma)" stroke="#e2a68d" stroke-width="3"/>
+    <ellipse cx="378" cy="126" rx="26" ry="18" fill="url(#gStroma)" stroke="#e2a68d" stroke-width="3"/>
+    <path d="${MYO}" fill="#e39aa8" stroke="#c1677a" stroke-width="3"/>
+    <path d="${MYO}" fill="url(#fibers)" opacity=".6"/>
+    <path d="M188,222 L232,222 L228,262 L192,262 Z" fill="#dc94a2" stroke="#c1677a" stroke-width="3"/>
+    <path d="M192,262 L184,306 M228,262 L236,306" stroke="#c1677a" stroke-width="3" fill="none" stroke-dasharray="5 5"/>
+    <g id="utDyn"></g>
+    ${T(210,36,'רחם',{size:15,fill:'#8a3050',weight:800})}
+    ${T(262,254,'צוואר הרחם',{size:12.5,fill:'#8a3050',weight:700,align:'left'})}
+    ${T(250,300,'נרתיק',{size:12.5,fill:'#8a3050',weight:700,align:'left'})}
+    ${T(112,60,'חצוצרה',{size:12,fill:'#8a3050',weight:700})}
+    ${T(42,160,'שחלה',{size:12,fill:'#8a3050',weight:700})}
+    ${T(378,160,'שחלה',{size:12,fill:'#8a3050',weight:700})}
+  </g>`;
+  s+=`<path d="M${lens[0]},${lens[1]} L${ZX},${ZY}" stroke="#c9a5b0" stroke-width="1.5" stroke-dasharray="4 4"/><path d="M${lens[0]},${lens[1]} L${ZX+(narrowU?410:0)},${ZY+(narrowU?0:360)}" stroke="#c9a5b0" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <circle cx="${lens[0]}" cy="${lens[1]}" r="8" fill="none" stroke="#c25a7c" stroke-width="2.5"/>`;
+  s+=`<g transform="translate(${ZX},${ZY})"><rect x="0" y="0" width="410" height="360" rx="18" fill="#fffaf8" stroke="#e7cfd2" stroke-width="2"/>
+     ${T(205,22,'הגדלה: חתך ברירית הרחם',{size:14,fill:'#8a3050',weight:800})}
+     <g id="zoomDyn"></g></g>`;
+  utSvg.innerHTML = s;
+}
+function gland(gxp,y0,y1,amp,freq,ph,wO,wI,cO,cI){
+  let d=''; for(let y=y0;y<=y1;y+=4){ const x=gxp+amp*Math.sin((y-y0)*freq+ph); d+=(d?'L':'M')+x.toFixed(1)+','+y.toFixed(1); }
+  return `<path d="${d}" stroke="${cO}" stroke-width="${wO}" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" stroke="${cI}" stroke-width="${wI}" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+function renderUterus(){
+  const th=THICK(t), bl=BLEED(t), isc=ISCH(t), p=H.p4(t)/100, e=H.e2(t)/100;
+  // overview
+  const sc = 1-0.78*clamp(th/5,0,1);
+  const endoCol = mix(mix('#f7a9bc','#f2a174',clamp(p*1.2,0,1)),'#d68aa0',isc*.35);
+  const lumenCol = mix('#fff3f3','#c7283a',bl*.85);
+  const thin = (t>=10.5 && t<15.4);
+  const cx=210, cy=135;
+  let o = `<path d="${ENDO}" fill="${endoCol}" stroke="#d8708c" stroke-width="2"/>
+    <g transform="translate(${cx} ${cy}) scale(${sc.toFixed(3)}) translate(${-cx} ${-cy})"><path d="${ENDO}" fill="${lumenCol}" stroke="none"/></g>`;
+  if(bl>.15){ o+=`<path d="M210,150 L210,212" stroke="#b3162b" stroke-width="3" stroke-dasharray="2 6" stroke-linecap="round" opacity="${bl.toFixed(2)}"/>`; }
+  // cervical mucus
+  if(thin){
+    o+=`<rect x="199" y="212" width="22" height="50" rx="6" fill="#d5ebf7" opacity=".95"/><path d="M205,216 L205,258 M210,214 L210,260 M215,216 L215,258" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-dasharray="6 5"/>`;
+  } else {
+    o+=`<rect x="203" y="212" width="14" height="50" rx="5" fill="#e6d3a8"/>`;
+    for(let k=0;k<9;k++) o+=`<circle cx="${207+(k%2)*6}" cy="${218+k*5}" r="2" fill="#c9b07a"/>`;
+  }
+  o+=`<rect x="${thin?199:203}" y="212" width="${thin?22:14}" height="50" rx="5" fill="none" stroke="#c1677a" stroke-width="1.2" opacity=".6"/>`;
+  $('#utDyn').innerHTML=o;
+
+  // zoom
+  const base=Z.base, surf=base-th*Z.scale, x0=Z.x0, x1=Z.x1, W=x1-x0;
+  let z='';
+  // lumen
+  z+=`<rect x="${x0}" y="${Z.lumenTop}" width="${W}" height="${(surf-Z.lumenTop).toFixed(1)}" fill="${lumenCol}"/>`;
+  if(bl>.03){
+    const n=Math.floor(70*bl);
+    for(let i=0;i<n;i++){ const [u,v,r]=SEED[i]; z+=`<circle cx="${(x0+8+u*(W-16)).toFixed(1)}" cy="${(Z.lumenTop+8+v*Math.max(10,surf-Z.lumenTop-16)).toFixed(1)}" r="${(2.6+r*1.6).toFixed(1)}" fill="#b3162b" opacity=".9"/>`; }
+    const nf=Math.ceil(7*bl);
+    for(let i=0;i<nf;i++){ const [u,v,r]=SEED[(i*5+3)%70]; const fx=x0+30+u*(W-60), fy=Z.lumenTop+14+v*Math.max(8,surf-Z.lumenTop-30);
+      z+=`<path d="M${fx.toFixed(1)},${fy.toFixed(1)} l9,-4 l8,5 l-3,9 l-11,2 z" fill="#f4a9bb" stroke="#d8708c" stroke-width="1.5"/>`; }
+  }
+  if(surf-Z.lumenTop>34) z+=T((x0+x1)/2, Z.lumenTop+22, bl>.3?'חלל הרחם: דם ורקמה יוצאים דרך צוואר הרחם':'חלל הרחם', {size:12.5, fill:bl>.45?'#fff':'#a15a70', weight:700});
+  // functional layer (ragged top when shedding)
+  const jag = bl*8;
+  let top=''; for(let x=x0;x<=x1;x+=8){ const y=surf + jag*(Math.sin(x*.9)+Math.sin(x*.37+1)+1)/2.4; top+=(top?'L':'M')+x+','+y.toFixed(1); }
+  const funcCol = mix(mix('#f8c8d3','#f6c3a4',clamp(p*1.2,0,1)),'#cdb0c6',isc*.45);
+  const fpath = `${top} L${x1},${base} L${x0},${base} Z`;
+  z+=`<path d="${fpath}" fill="${funcCol}"/><path d="${fpath}" fill="url(#cellDots)"/>`;
+  z+=`<path d="${top}" stroke="#d9738c" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+  // glands
+  const gH = base-surf;
+  if(gH>6){
+    for(let i=0;i<7;i++){
+      const gxp=80+i*42, amp=1+9*p, fr=.1+.3*p;
+      const top0=surf+ jag*.6 +4;
+      z+=gland(gxp,top0,base+10,amp,fr,i*1.3,7+3*p,1.6+4.4*p, isc>.5?'#b66f8e':'#d4688a', mix('#fde6ee','#fff0b0',clamp(p*1.3,0,1)));
+    }
+    // spiral arteries
+    for(let i=0;i<4;i++){
+      const ax=101+i*84, amp=2.5+6*p+2*e, fr=.28+.35*p;
+      const y0=base+16, y1=surf+jag*.6+12;
+      let d=''; for(let y=y0;y>=Math.min(y0,y1);y-=3){ const x=ax+amp*Math.sin((y0-y)*fr+i); d+=(d?'L':'M')+x.toFixed(1)+','+y.toFixed(1); }
+      z+=`<path d="${d}" stroke="${mix('#cf2f46','#6f1d2e',isc)}" stroke-width="${(2.8-1.6*isc).toFixed(1)}" fill="none" stroke-linecap="round" ${isc>.45?'stroke-dasharray="4 3"':''}/>`;
+    }
+  }
+  // basal layer + myometrium
+  z+=`<rect x="${x0}" y="${base}" width="${W}" height="34" fill="#e397ad"/><rect x="${x0}" y="${base}" width="${W}" height="34" fill="url(#cellDots)"/>`;
+  z+=`<line x1="${x0}" x2="${x1}" y1="${base}" y2="${base}" stroke="#c25a7c" stroke-width="2" stroke-dasharray="6 4"/>`;
+  z+=T((x0+x1)/2, base+22, 'שכבה בסיסית (נשארת תמיד)', {size:12, fill:'#fff', weight:800, extra:' stroke="#a84565" stroke-width="3" paint-order="stroke"'});
+  z+=`<rect x="${x0}" y="${base+34}" width="${W}" height="48" fill="#d9808f"/><rect x="${x0}" y="${base+34}" width="${W}" height="48" fill="url(#fibers)"/>`;
+  z+=T((x0+x1)/2, base+64, 'שריר הרחם', {size:12.5, fill:'#fff', weight:800, extra:' stroke="#a84565" stroke-width="3" paint-order="stroke"'});
+  if(th>1.6) z+=T((x0+x1)/2, (surf+base)/2+4, 'שכבה פונקציונלית (גדלה ונושרת)', {size:12.5, fill:'#7a2a49', weight:800, halo:true});
+  // ruler
+  for(let mm=0; mm<=5; mm++){ const y=base-mm*Z.scale; z+=`<line x1="${x0-14}" x2="${x0-6}" y1="${y}" y2="${y}" stroke="#a8939c" stroke-width="1.5"/>`+T(x0-18,y+4,mm,{size:11,fill:'#8b7a85',align:'left'}); }
+  z+=`<path d="M${x0-30},${surf} L${x0-30},${base}" stroke="#7a5af8" stroke-width="3" stroke-linecap="round"/><path d="M${x0-36},${surf} h12 M${x0-36},${base} h12" stroke="#7a5af8" stroke-width="3" stroke-linecap="round"/>`;
+  z+=T(x0-30, Math.max(surf-9,Z.lumenTop+4), f1(th)+' מ״מ', {size:12.5, fill:'#5a3fd0', weight:800, halo:true});
+  // legend
+  z+=`<path d="M150,346 q5,-8 10,0 t10,0" stroke="#d4688a" stroke-width="6" fill="none" stroke-linecap="round"/><path d="M150,346 q5,-8 10,0 t10,0" stroke="#fff0b0" stroke-width="2.2" fill="none" stroke-linecap="round"/>`;
+  z+=T(144,350,'בלוטה',{size:12,fill:'#5b5066',weight:700,align:'right'});
+  z+=`<path d="M290,352 q-6,-5 0,-9 t0,-9" stroke="#cf2f46" stroke-width="2.8" fill="none" stroke-linecap="round" transform="rotate(90 290 347)"/>`;
+  z+=T(282,350,'עורק ספירלי',{size:12,fill:'#5b5066',weight:700,align:'right'});
+  $('#zoomDyn').innerHTML=z;
+
+  // headline & tags
+  const phase = t<6?(bl>.1?'הרירית נושרת':'הרירית מצטמצמת'):t<14?'שגשוג: הרירית מתעבה':t<15?'הרירית מוכנה לשלב הבא':t<26.5?'אגירה: הרירית מתמלאת בנוזלים ובכלי דם':'ירידת הורמונים: הרירית מאבדת אספקת דם';
+  $('#utHead').textContent = phase+' · '+f1(th)+' מ״מ';
+  $('#utTags').innerHTML =
+    `<span class="tag">ריר צוואר הרחם: <b>${thin?'דליל (מקל מעבר זרע)':'סמיך (חוסם)'}</b></span>`+
+    `<span class="tag">טמפרטורה בסיסית: <b>${(t>=15.3&&t<27)?'גבוהה ב-0.2–0.5°C':'רגילה'}</b></span>`;
+}
+
+/* =================================================================== */
+/*                           AXIS                                       */
+/* =================================================================== */
+const axSvg = $('#axSvg');
+function node(cx,cy,rx,ry,fill,stroke,label,sub){
+  return `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${fill}" stroke="${stroke}" stroke-width="3.5"/>`+T(cx,cy-2,label,{size:17,fill:'#3a2f44',weight:800})+(sub?T(cx,cy+19,sub,{size:12,fill:'#5b5066',weight:500}):'');
+}
+function buildAxisStatic(){
+  axSvg.innerHTML = `
+  <defs><marker id="arPurple" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8b6fd6"/></marker></defs>
+  ${node(790,100,86,46,'#efe6ff','#a88be6','היפותלמוס','פולסים של GnRH כל 90–120 דקות')}
+  ${node(450,100,92,46,'#e6f0ff','#7ba6ea','היפופיזה קדמית','')}
+  <path d="M700,100 L552,100" stroke="#8b6fd6" stroke-width="6" stroke-linecap="round" marker-end="url(#arPurple)"/>
+  ${T(626,86,'GnRH',{size:14,fill:'#6a4cc4',weight:800,dir:'ltr'})}
+  <g fill="#8b6fd6"><circle r="5"><animateMotion dur="1.8s" repeatCount="indefinite" path="M700,100 L552,100"/></circle>
+    <circle r="5"><animateMotion dur="1.8s" begin="-.6s" repeatCount="indefinite" path="M700,100 L552,100"/></circle>
+    <circle r="5"><animateMotion dur="1.8s" begin="-1.2s" repeatCount="indefinite" path="M700,100 L552,100"/></circle></g>
+  <g id="axDyn"></g>`;
+}
+function renderAxis(){
+  const st=fbState(t), fs=H.fsh(t), lv=H.lh(t), e=H.e2(t), p=H.p4(t);
+  const wF=1.5+fs/100*9, wL=1.5+lv/100*9, wE=2+e/100*9, wP=2+p/100*9;
+  const oF=show.fsh?1:.15, oL=show.lh?1:.15, oE=show.e2?1:.15, oP=show.p4?1:.15;
+  const eActive = st!=='release', pActive = st==='negP';
+  let s='';
+  // ovary node
+  s+=`<ellipse cx="110" cy="100" rx="86" ry="46" fill="#ffe6ee" stroke="#e98aa6" stroke-width="3.5"/>`;
+  s+=T(110,64,'שחלה',{size:17,fill:'#3a2f44',weight:800});
+  if(t<14.4){ const r=clamp(DOMMM(t)*1.3,4,24); s+=`<circle cx="110" cy="102" r="${r.toFixed(1)}" fill="#f2a2b6" stroke="#d4708c" stroke-width="2"/><circle cx="110" cy="102" r="${(r*.72).toFixed(1)}" fill="#fdf1d6"/><circle cx="${(110-r*.3).toFixed(1)}" cy="${(102+r*.25).toFixed(1)}" r="${Math.max(2,r*.18).toFixed(1)}" fill="#d9943f"/>`; }
+  else { const r=clamp(corpusR(),8,24); s+=`<circle cx="110" cy="102" r="${r.toFixed(1)}" fill="${mix('#efe6dc','#f7bb2c',ST&&ST.cl?ST.cl.lut:1)}" stroke="#d58d16" stroke-width="2"/>`; }
+  // FSH / LH arrows (pituitary -> ovary)
+  s+=`<g opacity="${oF}"><path d="M356,80 L206,80" stroke="${HM.fsh.hex}" stroke-width="${wF.toFixed(1)}" stroke-linecap="round" fill="none"/><path d="M196,80 l${14+wF},-${5+wF*.6} v${10+wF*1.2} z" fill="${HM.fsh.hex}" transform="translate(${wF*.2} 0)"/></g>`;
+  s+=`<g opacity="${oL}"><path d="M356,122 L206,122" stroke="${HM.lh.hex}" stroke-width="${wL.toFixed(1)}" stroke-linecap="round" fill="none"/><path d="M196,122 l${14+wL},-${5+wL*.6} v${10+wL*1.2} z" fill="${HM.lh.hex}" transform="translate(${wL*.2} 0)"/></g>`;
+  s+=T(280,66,'FSH',{size:14,fill:HM.fsh.hex,weight:800,dir:'ltr',halo:true})+T(280,148,'LH',{size:14,fill:HM.lh.hex,weight:800,dir:'ltr',halo:true});
+  // feedback E2: ovary -> pituitary
+  const dashE = eActive?'':'stroke-dasharray="3 9"';
+  const eOp = (eActive?1:.3)*oE;
+  s+=`<g opacity="${eOp}"><path d="M120,148 C140,250 450,250 450,160" stroke="${HM.e2.hex}" stroke-width="${wE.toFixed(1)}" fill="none" stroke-linecap="round" ${dashE}/></g>`;
+  const pOp = (pActive?1:.3)*oP;
+  s+=`<g opacity="${pOp}"><path d="M90,146 C70,300 790,300 790,160" stroke="${HM.p4.hex}" stroke-width="${wP.toFixed(1)}" fill="none" stroke-linecap="round" ${pActive?'':'stroke-dasharray="3 9"'}/></g>`;
+  const head=(x,y,pos,col,op)=> pos
+    ? `<path d="M${x},${y-4} l-11,17 h22 z" fill="${col}" opacity="${op}"/>`
+    : `<path d="M${x-15},${y+2} h30" stroke="${col}" stroke-width="6" stroke-linecap="round" opacity="${op}"/>`;
+  if(eActive) s+=head(450,150,st==='posE',HM.e2.hex,eOp);
+  if(pActive) s+=head(790,150,false,HM.p4.hex,pOp);
+  const badge=(x,y,sign,txt)=>{ const pos=sign==='+'; return `<circle cx="${x}" cy="${y}" r="17" fill="${pos?'#f7c62e':'#d64550'}" stroke="#fff" stroke-width="3"/>`+T(x,y+7,pos?'+':'−',{size:24,fill:pos?'#4d3800':'#fff',weight:800})+T(x,y+36,txt,{size:12.5,fill:'#3a2f44',weight:800,halo:true}); };
+  if(eActive) s+=badge(284,211, st==='posE'?'+':'−', st==='posE'?'משוב חיובי':'משוב שלילי');
+  if(pActive) s+=badge(440,272,'−','משוב שלילי');
+  if(!eActive) s+=T(284,222,'אין עיכוב מהשחלה',{size:13,fill:'#6a6175',weight:700,halo:true});
+  s+=T(210,246,'אסטרוגן',{size:13.5,fill:HM.e2.hex,weight:800,halo:true});
+  s+=T(180,292,'פרוגסטרון',{size:13.5,fill:HM.p4.hex,weight:800,halo:true});
+  $('#axDyn').innerHTML=s;
+  $('#axBanner').innerHTML = `<b style="color:${st==='posE'?'#8a6500':st==='release'?'var(--muted)':'#b3303c'}">${FB_TEXT[st].h}:</b> ${FB_TEXT[st].b}`;
+}
+function corpusR(){ return ST&&ST.cl ? ST.cl.r*.7 : 12; }
+
+/* =================================================================== */
+/*                           STORY / CONTROLS                           */
+/* =================================================================== */
+function setMood(m){
+  const eyes=$('#oviEyes'), mouth=$('#oviMouth');
+  if(m==='sleepy'){ eyes.innerHTML='<path d="M28 38 q4 4 8 0 M44 38 q4 4 8 0" stroke="#5a3b22" stroke-width="2.6" fill="none" stroke-linecap="round"/>'; mouth.setAttribute('d','M34 50 Q40 53 46 50'); mouth.setAttribute('fill','none'); }
+  else if(m==='wow'){ eyes.innerHTML='<circle cx="31" cy="37" r="4" fill="#5a3b22"/><circle cx="49" cy="37" r="4" fill="#5a3b22"/><circle cx="32.2" cy="35.8" r="1.3" fill="#fff"/><circle cx="50.2" cy="35.8" r="1.3" fill="#fff"/>'; mouth.setAttribute('d','M36 49 a4 5 0 1 0 8 0 a4 5 0 1 0 -8 0'); mouth.setAttribute('fill','#7a4a2b'); }
+  else { eyes.innerHTML='<circle cx="31" cy="38" r="3.3" fill="#5a3b22"/><circle cx="49" cy="38" r="3.3" fill="#5a3b22"/>'; mouth.setAttribute('d','M32 48 Q40 56 48 48'); mouth.setAttribute('fill','none'); }
+}
+function renderStory(){
+  const idx = STORY.findIndex(r => t>=r.a && t<r.b);
+  if(idx===lastStory) return; lastStory=idx;
+  const r = STORY[idx>=0?idx:0];
+  const ph = PH[r.ph];
+  const pill = $('#stPhase'); pill.textContent=ph.n; pill.style.background=ph.bg;
+  $('#stTitle').textContent=r.title;
+  $('#oviSay').textContent = touched ? r.joke : INTRO;
+  $('#fH').textContent=r.h; $('#fO').textContent=r.o; $('#fU').textContent=r.u;
+  setMood(touched?r.mood:'happy');
+}
+
+function renderAll(){
+  const day=Math.floor(t);
+  $('#dayNum').textContent=day;
+  const ph=PH[phaseOf(t)], chip=$('#phaseChip'); chip.textContent=ph.n; chip.style.background=ph.bg;
+  if(+slider.value!==+t.toFixed(2)) slider.value=t;
+  slider.setAttribute('aria-valuetext','יום '+day+' – '+ph.n);
+  renderStory(); renderChips(); renderGraph(); renderOvary(); renderUterus(); renderAxis();
+}
+
+/* ---------- interactions ---------- */
+function setPlaying(on){
+  playing=on; const b=$('#btnPlay'); b.innerHTML = on?'<span class="ico">⏸</span><span class="lbl-m"> עצור</span>':'<span class="ico">▶</span><span class="lbl-m"> הפעל</span>'; b.classList.remove('pulse');
+  if(on) touch();
+}
+function touch(){ if(!touched){ touched=true; lastStory=-1; } }
+function userSet(v){ t=v; setPlaying(false); touch(); }
+function stepDay(dir){
+  setPlaying(false); touch();
+  let d=Math.floor(t)+dir; if(d>28){ d=1; cycle++; } if(d<1) d=28;
+  t=d+0.4;
+}
+$('#btnPlay').addEventListener('click',()=>setPlaying(!playing));
+$('#btnNext').addEventListener('click',()=>stepDay(1));
+$('#btnPrev').addEventListener('click',()=>stepDay(-1));
+$('#speed').addEventListener('change',e=>{ speedDay=+e.target.value; });
+slider.addEventListener('input',()=>{ userSet(+slider.value); });
+slider.addEventListener('keydown',e=>{ if(e.key==='ArrowLeft'||e.key==='ArrowRight'){ e.preventDefault(); stepDay(e.key==='ArrowRight'?1:-1); } });
+document.addEventListener('keydown',e=>{
+  if(e.target.closest && e.target.closest('input,select,textarea,button')) return;
+  if(e.key===' '){ e.preventDefault(); setPlaying(!playing); }
+  else if(e.key==='ArrowRight') stepDay(1); else if(e.key==='ArrowLeft') stepDay(-1);
+});
+$('#tglOvi').addEventListener('change',e=>{ $('#storyCard').classList.toggle('no-ovi',!e.target.checked); });
+
+const JUMPS=[['וסת',1.4],['שלב השגשוג',8.4],['שיא LH',13.6],['ביוץ',14.4],['שיא פרוגסטרון',21.4],['ירידת הורמונים',27.4]];
+$('#jumps').insertAdjacentHTML('beforeend', JUMPS.map(([n,v])=>`<button class="jump" type="button" data-t="${v}">${n}</button>`).join(''));
+$('#jumps').addEventListener('click',e=>{ const b=e.target.closest('.jump'); if(b) userSet(+b.dataset.t); });
+
+/* ---------- main loop ---------- */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(.1,(now-last)/1000); last=now;
+  if(playing){ t+=dt*speedDay; if(t>=29){ t-=28; cycle++; } }
+  if(Math.abs(t-lastT)>1e-4){ lastT=t; renderAll(); }
+  stepParticles(dt);
+  requestAnimationFrame(frame);
+}
+buildGraph(); buildChips(); buildOvaryStatic(); buildUterusStatic(); buildAxisStatic();
+{ let wasNarrow = narrowU;
+  new ResizeObserver(()=>{ const n=($('#utCard').clientWidth||999)<560; if(n!==wasNarrow){ wasNarrow=n; buildUterusStatic(); lastT=-1; } }).observe($('#utCard')); }
+{ let gw = gSvg.clientWidth, gh = gSvg.clientHeight, gm = window.matchMedia('(max-width:999px)').matches;
+  new ResizeObserver(()=>{ const w=gSvg.clientWidth, h=gSvg.clientHeight, m=window.matchMedia('(max-width:999px)').matches; if(Math.abs(w-gw)>2 || Math.abs(h-gh)>2 || m!==gm){ gw=w; gh=h; gm=m; buildGraph(); lastT=-1; } }).observe(gSvg); }
+renderAll();
+requestAnimationFrame(frame);
+window.cycleSim = { set(v){ t=v; lastT=-1; }, get t(){ return t; } };
+})();
+</script>
+</body>
+</html>
